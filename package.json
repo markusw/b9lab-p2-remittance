@@ -1,0 +1,26 @@
+{
+  "name": "p2-remittance",
+  "version": "1.0.0",
+  "description": "Simple project transferring ETH with 2FA",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Markus",
+  "license": "ISC",
+  "devDependencies": {
+    "file-loader": "^4.1.0",
+    "truffle": "^5.0.28",
+    "truffle-assertions": "^0.9.1",
+    "webpack": "^4.36.1",
+    "webpack-cli": "^3.3.6"
+  },
+  "dependencies": {
+    "jquery": "^3.4.1",
+    "truffle-contract": "^4.0.25",
+    "web3": "^1.0.0-beta.37"
+  }
+}
