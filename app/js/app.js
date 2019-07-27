@@ -35,6 +35,7 @@ window.addEventListener('load', async() => {
         $("#deposit").click(depositFunds);
         $('#getBalance').click(getBalance);
         $('#withdraw').click(withdrawBalance);
+        $('#reclaim').click(reclaimBalance);
 
     } catch (err) {
         console.log(err);
@@ -50,32 +51,34 @@ async function depositFunds() {
         const accounts = await web3.eth.getAccounts();
         const alice = accounts[1];
         const carol = accounts[2];
-        const value = web3.utils.toWei($('input[name="deposit-amount"]').val(), "Ether");
         const password = $('input[name="password-bob"]').val();
-        const puzzle = web3.utils.soliditySha3(carol, password);
+        const deadline = $("input[name='deadline']").val() * 86400;
+
+        const value = web3.utils.toWei($('input[name="deposit-amount"]').val(), "Ether");
+        const puzzle = await instance.generatePuzzle.call(password, carol);
 
         // trial run with call to see if transaction will be successful
-        assert(await instance.depositFunds.call(puzzle, {from: alice, value: value}), 
+        assert(await instance.depositFunds.call(puzzle, deadline, {from: alice, value: value}), 
         "Transaction will fail, didn't send");
 
-        // Split funds
-        const tx = await instance.depositFunds(puzzle, {from: alice, value: value}).on(
+        // Deposit funds
+        const tx = await instance.depositFunds(puzzle, deadline, {from: alice, value: value}).on(
             "transactionHash", 
-            txHash => $("#status1").html('Transaction sent, waiting to confirm. txHash: ' + txHash));
-        
-        const receipt = tx.receipt;
-
-        if (!receipt.status) {
-            console.error(receipt);
-            $("#error").html('Error in transaction: ' + receipt);
-        } else if (receipt.logs[0].event != "LogDepositCreated") {
-            console.error("Wrong event: " + receipt)
-            $("#error").html('Wrong event: ' + receipt);
-        } else {
-            console.log(receipt);
-            $("#status2").html('Transaction successful, Send <strong>' + password + '</strong> to Bob');
-        }
-    } catch (err) {
+            txHash => $("#status1").html('Transaction sent, waiting to confirm. txHash: ' + txHash)).
+            on("receipt", function(receipt) {
+                if (!receipt.status) {
+                    console.error(receipt);
+                    $("#error").html('Error in transaction: ' + receipt);
+                } else if (receipt.logs[0].event != "LogDepositCreated") {
+                    console.error("Wrong event: " + receipt)
+                    $("#error").html('Wrong event: ' + receipt);
+                } else {
+                    console.log(receipt);
+                    $("#status2").html('Transaction successful, Send <strong>' + password + '</strong> to Bob');
+                }
+            });
+    } 
+    catch (err) {
         console.error(err);
         $("#error").html('Fund Deposit failed: ' + err.toString());
     }
@@ -87,9 +90,9 @@ async function getBalance() {
         const accounts = await web3.eth.getAccounts();
         const carol = accounts[2];
         const password = $('input[name="withdrawPw-bob"]').val()
-        const puzzle = web3.utils.soliditySha3(carol, password);
+        const puzzle = await instance.generatePuzzle.call(password, carol);
 
-        const balance = web3.utils.fromWei(await instance.balances.call(puzzle));
+        const balance = web3.utils.fromWei((await instance.balances.call(puzzle)).value);
         $('#amount-contract').html('You can withdraw ' + balance + ' ETH');
     }
     catch (err) {
@@ -109,26 +112,60 @@ async function withdrawBalance() {
         assert(await instance.withdrawFunds.call(password, {from: carol}), 
         "Transaction will fail, didn't send");
 
-        const tx = await instance.withdrawFunds(password, {from: carol}).on(
+        await instance.withdrawFunds(password, {from: carol}).on(
             "transactionHash", 
-            txHash => $("#statusW1").html('Withdraw Request sent, waiting to confirm. txHash: ' + txHash));
-        
-            const receipt = tx.receipt;
-
-            if (!receipt.status) {
-                console.error(receipt);
-                $("#errorW").html('Error in transaction: ' + receipt);
-            } else if (receipt.logs[0].event != "LogWithdrawn") {
-                console.error("Wrong event: " + receipt)
-                $("#errorW").html('Wrong event: ' + receipt.toString());
-            } else {
-                console.log(receipt);
-                $("#statusW2").html('Withdraw successful');
-            }
-    }
+            txHash => $("#statusW1").html('Withdraw transaction sent, waiting to confirm. txHash: ' + txHash))
+            .on("receipt", function(receipt) {
+                if (!receipt.status) {
+                    console.error(receipt);
+                    $("#errorW").html('Error in transaction: ' + receipt);
+                } else if (receipt.logs[0].event != "LogWithdrawn") {
+                    console.error("Wrong event: " + receipt)
+                    $("#errorW").html('Wrong event: ' + receipt.toString());
+                } else {
+                    console.log(receipt);
+                    $("#statusW2").html('Withdraw successful');
+                }
+            });
+    } 
     catch (err) {
         console.error(err);
         $("#errorW").html('Withdrawal failed: ' + err.toString());
+    }
+}
+
+async function reclaimBalance() {
+    try {
+        const instance = await Remittance.deployed();
+        const accounts = await web3.eth.getAccounts();
+        const alice = accounts[1];
+        const carol = accounts[2];
+        const password = $('input[name="reclaimPw-bob"]').val()
+        const puzzle = await instance.generatePuzzle.call(password, carol);
+
+        // trial run with call to see if transaction will be successful
+        assert(await instance.reclaimFunds.call(puzzle, {from: alice}), 
+        "Transaction will fail, didn't send");
+
+        await instance.reclaimFunds(puzzle, {from: alice}).on(
+            "transactionHash", 
+            txHash => $("#statusR1").html('Reclaim transaction sent, waiting to confirm. txHash: ' + txHash))
+            .on("receipt", function(receipt) {
+                if (!receipt.status) {
+                    console.error(receipt);
+                    $("#errorR").html('Error in transaction: ' + receipt);
+                } else if (receipt.logs[0].event != "LogReclaimed") {
+                    console.error("Wrong event: " + receipt)
+                    $("#errorR").html('Wrong event: ' + receipt.toString());
+                } else {
+                    console.log(receipt);
+                    $("#statusR2").html('Reclaim successful');
+                }
+            });
+    } 
+    catch (err) {
+        console.error(err);
+        $("#errorR").html('Reclaim failed: ' + err.toString());
     }
 }
 

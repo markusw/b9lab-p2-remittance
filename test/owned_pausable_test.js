@@ -7,7 +7,7 @@ contract("Remittance", accounts => {
     const [owner, otherAddress] = accounts;
 
     beforeEach("Get new Instance before each test", async () => {
-        instance = await Remittance.new({from: owner});
+        instance = await Remittance.new(100, true, {from: owner});
     });
 
     describe("Changing owner", async() => {
