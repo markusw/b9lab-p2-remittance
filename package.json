@@ -16,7 +16,7 @@
     "truffle": "^5.0.28",
     "truffle-assertions": "^0.9.1",
     "webpack": "^4.36.1",
-    "webpack-cli": "^3.3.6"
+    "webpack-cli": "^3.3.12"
   },
   "dependencies": {
     "jquery": "^3.4.1",
